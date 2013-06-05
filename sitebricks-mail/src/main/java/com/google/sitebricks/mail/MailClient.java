@@ -246,6 +246,14 @@ public interface MailClient {
    */
   ListenableFuture<Message> fetchUid(Folder folder, int uid);
 
+  /**
+   * Similar to {@link #fetch(Folder, int, int)} but fetches messages in range
+   * of UIDs not message indexes.
+   *
+   * <b>NOTE: you must call {@link #open(String)} first.</b>
+   */
+  ListenableFuture<List<Message>> fetchUids(Folder folder, int startUid, int endUid);
+
   ListenableFuture<Set<String>> setGmailLabels(Folder folder, int imapUid,
                                                Set<String> labels);
 
