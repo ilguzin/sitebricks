@@ -93,6 +93,23 @@ public class Parsing {
     }
   }
 
+  static void eatUpTo(Queue<String> tokens, String untilString) {
+    eatUpTo(tokens, untilString, true);
+  }
+
+  static void eatUpTo(Queue<String> tokens, String untilString, boolean eatUntilString) {
+    while (tokens.size() > 0 && !untilString.equals(tokens.peek())) {
+      tokens.poll();
+    }
+
+    if (eatUntilString && untilString.equals(tokens.peek()))
+      tokens.poll();
+
+    if (tokens.size() == 0)
+      throw new IllegalArgumentException("I eat all of it in [" + tokens + "]. " +
+        "Are you sure untilPattern='" + untilString + "' is ok?");
+  }
+
   static boolean isValid(String token) {
     return null != token && !"NIL".equalsIgnoreCase(token);
   }

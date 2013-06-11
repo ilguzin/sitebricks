@@ -31,21 +31,26 @@ class MailClientHandler extends SimpleChannelHandler {
   private static final Map<String, Boolean> logAllMessagesForUsers = new ConcurrentHashMap<String, Boolean>();
 
   public static final String CAPABILITY_PREFIX = "* CAPABILITY";
+  static final Pattern CAPABILITY_SUCCESS_REGEX =
+      Pattern.compile("[.]\\s+OK.*", Pattern.CASE_INSENSITIVE);
+
   static final Pattern GMAIL_AUTH_SUCCESS_REGEX =
-      Pattern.compile("[.] OK .*@.* \\(Success\\)", Pattern.CASE_INSENSITIVE);
-  
+      Pattern.compile("[.]\\s+OK.*@.*\\(Success\\)", Pattern.CASE_INSENSITIVE);
+
   static final Pattern IMAP_AUTH_SUCCESS_REGEX =
-	      Pattern.compile("[.] OK (.*)", Pattern.CASE_INSENSITIVE);
+	      Pattern.compile("[.]\\s+OK\\s+(.*)", Pattern.CASE_INSENSITIVE);
 
   static final Pattern COMMAND_FAILED_REGEX =
-      Pattern.compile("^[.] (NO|BAD) (.*)", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("^[.]\\s+(NO|BAD)\\s+(.*)", Pattern.CASE_INSENSITIVE);
   static final Pattern MESSAGE_COULDNT_BE_FETCHED_REGEX =
       Pattern.compile("^\\d+ no some messages could not be fetched \\(failure\\)\\s*",
           Pattern.CASE_INSENSITIVE);
   static final Pattern SYSTEM_ERROR_REGEX = Pattern.compile("[*]\\s*bye\\s*system\\s*error\\s*",
       Pattern.CASE_INSENSITIVE);
 
-  static final Pattern IDLE_ENDED_REGEX = Pattern.compile(".* OK IDLE terminated \\(success\\)\\s*",
+  static final Pattern IDLE_STARTED_REGEX = Pattern.compile("\\+\\s+idling.*",
+      Pattern.CASE_INSENSITIVE);
+  static final Pattern IDLE_ENDED_REGEX = Pattern.compile("\\d+\\s+ok\\s+idle.*",
       Pattern.CASE_INSENSITIVE);
   static final Pattern IDLE_EXISTS_REGEX = Pattern.compile("\\* (\\d+) exists\\s*",
       Pattern.CASE_INSENSITIVE);
@@ -56,6 +61,7 @@ class MailClientHandler extends SimpleChannelHandler {
   private final MailClientConfig config;
 
   private final CountDownLatch loginSuccess = new CountDownLatch(1);
+  private final CountDownLatch capabilitiesSuccess = new CountDownLatch(1);
   private volatile List<String> capabilities;
   private volatile FolderObserver observer;
   final AtomicBoolean idleRequested = new AtomicBoolean();
@@ -109,6 +115,10 @@ class MailClientHandler extends SimpleChannelHandler {
     return loginSuccess.getCount() == 0;
   }
 
+  public boolean isCapabilitiesTaken() {
+    return capabilitiesSuccess.getCount() == 0;
+  }
+
   private static class PushedData {
     volatile boolean idleExitSent = false;
     // guarded by idleMutex.
@@ -160,12 +170,31 @@ class MailClientHandler extends SimpleChannelHandler {
             config.getUsername());
         return;
       }
-      
-      if (loginSuccess.getCount() > 0) {
+
+      if (capabilitiesSuccess.getCount() > 0) {
         if (message.startsWith(CAPABILITY_PREFIX)) {
           this.capabilities = Arrays.asList( message.substring(CAPABILITY_PREFIX.length() + 1).split("[ ]+"));
           return;
-        } else if (GMAIL_AUTH_SUCCESS_REGEX.matcher(message).matches() || IMAP_AUTH_SUCCESS_REGEX.matcher(message).matches()) {
+        }
+        else if (CAPABILITY_SUCCESS_REGEX.matcher(message).matches()) {
+          log.info("Capability success for user {}", config.getUsername());
+          capabilitiesSuccess.countDown();
+        }
+        else {
+          Matcher matcher = COMMAND_FAILED_REGEX.matcher(message);
+          if (matcher.find()) {
+            // WARNING: DO NOT COUNTDOWN THE CAPABILITY LATCH ON FAILURE!!!
+
+            log.warn("Capability request failed for {} due to: {}", config.getUsername(), message);
+            errorStack.push(new Error(null, extractError(matcher),
+              wireTrace.list()));
+            disconnectAbnormally(message);
+          }
+        }
+        return;
+      }
+      else if (loginSuccess.getCount() > 0) {
+        if (GMAIL_AUTH_SUCCESS_REGEX.matcher(message).matches() || IMAP_AUTH_SUCCESS_REGEX.matcher(message).matches()) {
           log.info("Authentication success for user {}", config.getUsername());
           loginSuccess.countDown();
         } else {
@@ -285,7 +314,7 @@ class MailClientHandler extends SimpleChannelHandler {
 
     CommandCompletion completion = completions.peek();
     if (completion == null) {
-      if ("+ idling".equalsIgnoreCase(message)) {
+      if (IDLE_STARTED_REGEX.matcher(message).matches()) {
         synchronized (idleMutex) {
           idler.idleStart();
           log.trace("IDLE entered.");
@@ -316,14 +345,30 @@ class MailClientHandler extends SimpleChannelHandler {
   boolean awaitLogin() {
     try {
       if (!loginSuccess.await(10L, TimeUnit.SECONDS)) {
-        disconnectAbnormally("Timed out waiting for login response");
-        throw new RuntimeException("Timed out waiting for login response");
+        String error = " Timed out waiting for login or incorrect credentials response";
+        disconnectAbnormally(error);
+        throw new RuntimeException(error);
       }
 
       return isLoggedIn();
     } catch (InterruptedException e) {
       errorStack.push(new Error(null, e.getMessage(), wireTrace.list()));
       throw new RuntimeException("Interruption while awaiting server login", e);
+    }
+  }
+
+  boolean awaitCapabilities() {
+    try {
+      if (!capabilitiesSuccess.await(10L, TimeUnit.SECONDS)) {
+        String error = " Timed out waiting for capabilities response";
+        disconnectAbnormally(error);
+        throw new RuntimeException(error);
+      }
+
+      return isCapabilitiesTaken();
+    } catch (InterruptedException e) {
+      errorStack.push(new Error(null, e.getMessage(), wireTrace.list()));
+      throw new RuntimeException("Interruption while awaiting server capabilities", e);
     }
   }
 

@@ -10,13 +10,17 @@ import java.util.regex.Pattern;
  * @author dhanji@gmail.com (Dhanji R. Prasanna)
  */
 class OpenFolderExtractor implements Extractor<Folder> {
-  private static final Pattern UIDNEXT_REGEX = Pattern.compile("\\s*. OK \\[UIDNEXT (\\d+)\\]\\s*", Pattern.CASE_INSENSITIVE);
+  private static final Pattern UIDNEXT_REGEX = Pattern.compile("\\s*. OK \\[UIDNEXT (\\d+)\\]\\s*",
+    Pattern.CASE_INSENSITIVE);
+  private static final Pattern UIDVALIDITY_REGEX = Pattern.compile("\\s*. OK \\[UIDVALIDITY (\\d+)\\]\\s*",
+    Pattern.CASE_INSENSITIVE);
   private static final String SELECTED = "selected";
 
   @Override
   public Folder extract(List<String> messages) {
-    String folderName = null;
+    String folderName = "no_resp";
     int count = 0, nextUid = -1;
+    long validityUid = -1;
     for (String message : messages) {
       String[] pieces = message.split("[ ]+", 4);
       if (pieces.length > 1 && "EXISTS".equalsIgnoreCase(pieces[2])) {
@@ -32,12 +36,18 @@ class OpenFolderExtractor implements Extractor<Folder> {
           if (!uidNext.isEmpty())
             nextUid = Integer.parseInt(uidNext);
         }
+        matcher = UIDVALIDITY_REGEX.matcher(message);
+        if (matcher.find()) {
+          String uidValidity = matcher.group(1);
+          if (!uidValidity.isEmpty())
+            validityUid = Long.parseLong(uidValidity);
+        }
       }
     }
 
     Preconditions.checkState(null != folderName, "Error in IMAP protocol, " +
         "could not detect folder name");
 
-    return new Folder(folderName, count, nextUid);
+    return new Folder(folderName, count, nextUid, validityUid);
   }
 }

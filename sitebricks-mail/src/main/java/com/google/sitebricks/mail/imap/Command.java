@@ -26,7 +26,9 @@ public enum Command {
   STORE_FLAGS("uid store"),
   COPY("uid copy"),
   STORE_LABELS("uid store");
-  public static final Pattern OK_SUCCESS = Pattern.compile("\\d+ ok (.* )?\\(?success\\)?",
+  public static final Pattern OK_SUCCESS = Pattern.compile("\\d+\\s+ok.*",
+      Pattern.CASE_INSENSITIVE);
+  public static final Pattern OK_SUCCESS_FIRST = Pattern.compile("\\.\\s+ok.*",
       Pattern.CASE_INSENSITIVE);
   private static final Pattern NO_FAILURE = Pattern.compile("\\d+ no .*",
       Pattern.CASE_INSENSITIVE);
@@ -47,11 +49,14 @@ public enum Command {
    */
   public static boolean isEndOfSequence(Long sequence, String message) throws ExtractionException {
     final String prefix = Long.toString(sequence) + " ";
+    final String prefixAlternate = ". ";
 
-    if (message.length() < (prefix.length()) || !prefix.equals(message.substring(0, prefix.length())))
+    if (message.length() < prefix.length() ||
+      (!prefix.equals(message.substring(0, prefix.length())) &&
+        !prefixAlternate.equals(message.substring(0, prefixAlternate.length()))))
       return false;
 
-    if (OK_SUCCESS.matcher(message).matches())
+    if (OK_SUCCESS.matcher(message).matches() || OK_SUCCESS_FIRST.matcher(message).matches())
       return true;
 
     if (NO_FAILURE.matcher(message).matches() ||

@@ -60,6 +60,16 @@ public class NettyImapClient implements MailClient, Idler {
     this.config = config;
   }
 
+  public NettyImapClient(MailClientConfig config,
+                         ExecutorService bossPool,
+                         ExecutorService workerPool,
+                         Channel channel) {
+    this.channel = channel;
+    this.workerPool = workerPool;
+    this.bossPool = bossPool;
+    this.config = config;
+  }
+
   static {
     System.setProperty("mail.mime.decodetext.strict", "false");
   }
@@ -143,9 +153,50 @@ public class NettyImapClient implements MailClient, Idler {
     return login();
   }
 
-  private boolean login() {
+  boolean init(final DisconnectListener listener) {
+
+    mailClientHandler = new MailClientHandler(this, config);
+    channel.getPipeline().addLast("handler", mailClientHandler);
+
+    this.currentFolder = null;
+    this.sequence.set(0L);
+    mailClientHandler.idleRequested.set(false);
+
+    this.disconnectListener = listener;
+    if (null != listener) {
+      // https://issues.jboss.org/browse/NETTY-47?page=com.atlassian.jirafisheyeplugin%3Afisheye-issuepanel#issue-tabs
+      channel.getCloseFuture().addListener(new ChannelFutureListener() {
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+          mailClientHandler.idleAcknowledged.set(false);
+          mailClientHandler.disconnected();
+          listener.disconnected();
+        }
+      });
+    }
+    return updateCaps() && login();
+  }
+
+  private boolean updateCaps() {
     try {
       channel.write(". CAPABILITY\r\n");
+      return mailClientHandler.awaitCapabilities();
+    } catch (Exception e) {
+      // Capture the wire trace and log it for some extra context here.
+      StringBuilder trace = new StringBuilder();
+      for (String line : mailClientHandler.getWireTrace()) {
+        trace.append(line).append("\n");
+      }
+
+      log.error("Could not get caps for {}. Partial trace follows:\n" +
+        "----begin wiretrace----\n{}\n----end wiretrace----",
+        new Object[]{config.getUsername(), trace.toString(), e});
+    }
+    return false;
+  }
+
+  private boolean login() {
+    try {
       if (config.getPassword() != null)
         channel.write(". login " + config.getUsername() + " " + config.getPassword() + "\r\n");
       else if (config.getOAuthConfig() != null) {
@@ -206,6 +257,7 @@ public class NettyImapClient implements MailClient, Idler {
 
   @Override
   public void disconnectAsync() {
+    // TODO () use newSingleThreadExecutor ? Executors.newSingleThreadExecutor().submit(new Runnable() {
     workerPool.submit(new Runnable() {
       @Override
       public void run() {
@@ -339,6 +391,7 @@ public class NettyImapClient implements MailClient, Idler {
         }
       }
     }, workerPool);
+    // TODO Executors.newSingleThreadExecutor()) ?
 
     String args = '"' + folder + "\"";
     send(readWrite ? Command.FOLDER_OPEN : Command.FOLDER_EXAMINE, args, valueFuture);

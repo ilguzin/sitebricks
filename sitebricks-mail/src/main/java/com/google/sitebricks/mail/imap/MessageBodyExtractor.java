@@ -51,7 +51,8 @@ class MessageBodyExtractor implements Extractor<List<Message>> {
       Pattern.CASE_INSENSITIVE);
 
   static final Pattern EOS_REGEX =
-      Pattern.compile("^\\d+ ok success\\)?", Pattern.CASE_INSENSITIVE);
+//      Pattern.compile("^\\d+ ok success\\)?", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("^\\d+\\s+ok.*", Pattern.CASE_INSENSITIVE);
   private static final Pattern WHITESPACE_PREFIX_REGEX = Pattern.compile("^\\s+");
 
   private static final Map<String, String> CONVERTIBLE_CHARSETS = Maps.newHashMap();
@@ -229,7 +230,7 @@ class MessageBodyExtractor implements Extractor<List<Message>> {
 
     firstLine = firstLine.replaceFirst("[*]? \\d+[ ]* ", "");
     Queue<String> tokens = Parsing.tokenize(firstLine);
-    Parsing.eat(tokens, "FETCH", "(", "UID");
+    Parsing.eatUpTo(tokens, "UID");
     email.setImapUid(Parsing.match(tokens, int.class));
 
     // We sometimes get a set of flags here, even though we didnt ask for it.

@@ -162,6 +162,11 @@ class MessageStatusExtractor implements Extractor<List<MessageStatus>> {
       return null;
     }
 
+    if (!message.contains("FETCH")) {
+      log.warn("message is not BAD, but not contains FETCH ignoring: {}", message);
+      return null;
+    }
+
     Queue<String> tokens = Parsing.tokenize(message);
     MessageStatus status = new MessageStatus();
     try {

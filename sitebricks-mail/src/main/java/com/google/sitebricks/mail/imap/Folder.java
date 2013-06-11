@@ -9,11 +9,13 @@ public class Folder {
   private final String name;
   private final int count;
   private final int nextUid;
+  private final long uidValidity;
 
-  public Folder(String name, int count, int nextUid) {
+  public Folder(String name, int count, int nextUid, long uidValidity) {
     this.name = name;
     this.count = count;
     this.nextUid = nextUid;
+    this.uidValidity = uidValidity;
   }
 
   public int getCount() {
@@ -28,7 +30,11 @@ public class Folder {
     return nextUid;
   }
 
-    @Override
+  public long getUidValidity() {
+    return uidValidity;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (!(o instanceof Folder)) return false;
