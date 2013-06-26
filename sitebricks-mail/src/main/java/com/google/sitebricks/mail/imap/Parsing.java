@@ -98,6 +98,7 @@ public class Parsing {
   }
 
   static void eatUpTo(Queue<String> tokens, String untilString, boolean eatUntilString) {
+    String initialTokensStr = tokens.toString();
     while (tokens.size() > 0 && !untilString.equals(tokens.peek())) {
       tokens.poll();
     }
@@ -106,7 +107,7 @@ public class Parsing {
       tokens.poll();
 
     if (tokens.size() == 0)
-      throw new IllegalArgumentException("I eat all of it in [" + tokens + "]. " +
+      throw new IllegalArgumentException("I eat all of it in " + initialTokensStr + ". " +
         "Are you sure untilPattern='" + untilString + "' is ok?");
   }
 

@@ -52,6 +52,14 @@ public class NettyImapClient implements MailClient, Idler {
   private volatile Folder currentFolder = null;
   private volatile DisconnectListener disconnectListener;
 
+  public interface ClientReadyListener {
+
+    public void onClientReady(NettyImapClient client);
+
+    public void onClientError(Throwable error);
+
+  }
+
   public NettyImapClient(MailClientConfig config,
                          ExecutorService bossPool,
                          ExecutorService workerPool) {
@@ -153,7 +161,7 @@ public class NettyImapClient implements MailClient, Idler {
     return login();
   }
 
-  boolean init(final DisconnectListener listener) {
+  void init(final DisconnectListener listener) {
 
     mailClientHandler = new MailClientHandler(this, config);
     channel.getPipeline().addLast("handler", mailClientHandler);
@@ -174,13 +182,41 @@ public class NettyImapClient implements MailClient, Idler {
         }
       });
     }
-    return updateCaps() && login();
   }
 
-  private boolean updateCaps() {
+  public ListenableFuture<Capability> fetchCapability() {
+    SettableFuture<Capability> valueFuture = SettableFuture.create();
+
+    send(Command.GET_CAPABILITY, "", valueFuture, true);
+
+    return valueFuture;
+  }
+
+  public ListenableFuture<String> doLogin() {
+    Command command = null;
+    String args = null;
     try {
-      channel.write(". CAPABILITY\r\n");
-      return mailClientHandler.awaitCapabilities();
+      if (config.getPassword() != null) {
+        command = Command.DO_LOGIN;
+        args = config.getUsername() + " " + config.getPassword();
+      }
+      else if (config.getOAuthConfig() != null) {
+        // Use xoauth authentication.
+        OAuthConfig oauth = config.getOAuthConfig();
+
+        command = Command.DO_AUTHENTICATE;
+        args = "XOAUTH " +
+               new XoauthSasl(config.getUsername(), oauth.clientId, oauth.clientSecret)
+                 .build(Protocol.IMAP, oauth.accessToken, oauth.tokenSecret);
+      }
+      else if (config.getOAuth2Config() != null) {
+        // Use xoauth2 authentication.
+        command = Command.DO_AUTHENTICATE;
+        args = "XOAUTH2 " + Xoauth2Sasl.build(config.getUsername(), config.getOAuth2Config().accessToken);
+      }
+      else
+        throw new IllegalArgumentException("Must specify a valid oauth/oauth2 config if not using password auth");
+
     } catch (Exception e) {
       // Capture the wire trace and log it for some extra context here.
       StringBuilder trace = new StringBuilder();
@@ -188,11 +224,15 @@ public class NettyImapClient implements MailClient, Idler {
         trace.append(line).append("\n");
       }
 
-      log.error("Could not get caps for {}. Partial trace follows:\n" +
+      log.warn("Could not oauth or login for {}. Partial trace follows:\n" +
         "----begin wiretrace----\n{}\n----end wiretrace----",
         new Object[]{config.getUsername(), trace.toString(), e});
     }
-    return false;
+    SettableFuture<String> valueFuture = SettableFuture.create();
+
+    send(command, args, valueFuture, true);
+
+    return valueFuture;
   }
 
   private boolean login() {
@@ -305,9 +345,16 @@ public class NettyImapClient implements MailClient, Idler {
   }
 
   <D> ChannelFuture send(Command command, String args, SettableFuture<D> valueFuture) {
-    Long seq = sequence.incrementAndGet();
+    return send(command, args, valueFuture, false);
+  }
 
-    String commandString = seq + " " + command.toString()
+  <D> ChannelFuture send(Command command, String args, SettableFuture<D> valueFuture, boolean firstSeq) {
+
+    Long seq = 0L;
+    if (!firstSeq)
+      seq = sequence.incrementAndGet();
+
+    String commandString = (seq > 0 ? seq + "" : ".") + " " + command.toString()
         + (null == args ? "" : " " + args)
         + "\r\n";
 

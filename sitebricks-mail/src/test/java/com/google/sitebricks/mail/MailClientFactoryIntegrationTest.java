@@ -28,66 +28,82 @@ public class MailClientFactoryIntegrationTest {
     NettyImapClientFactory nettyImapClientFactory =
       new NettyImapClientFactory(threadPullExecutor, threadPullExecutor);
 
-    final String email = "mailninjatest@gmail.com";
-    final String password = "This_app2014";
+    final String email = "";
+    final String password = "";
     final String host = "imap.gmail.com";
     final int port = 993;
+//    final String host = "localhost";
+//    final int port = 9993;
 
     MailClientHandler.addUserForVerboseLogging(email, true);
     NettyImapClient.addUserForVerboseOutput(email, true);
 
-    try {
-      final MailClient client = nettyImapClientFactory.newNettyImapClient(
-        host, port, Mail.Auth.SSL, email, password, 10000,
-        new MailClient.DisconnectListener() {
-          @Override
-          public void disconnected() {
-            System.out.println("[" + email + "]: disconnected");
-            System.exit(0);
-          }
-
-          public void idled() {
-            System.out.println("[" + email + "]: idled");
-
-          }
-
-          public void unidled() {
-            System.out.println("[" + email + "]: unidled");
-          }
-        }
-      );
-
-      List<String> capabilities = client.capabilities();
-      System.out.println("CAPS: " + capabilities);
-
-      ListenableFuture<Folder> future = client.open("INBOX", true);
-      final Folder folder = future.get();
-
-      final ExecutorService executor = Executors.newCachedThreadPool();
-      future.addListener(new Runnable() {
+    nettyImapClientFactory.newNettyImapClient(
+      host, port, Mail.Auth.SSL, email, password, 10000,
+      new MailClient.DisconnectListener() {
         @Override
-        public void run() {
+        public void disconnected() {
+          System.out.println("[" + email + "]: disconnected");
+          System.exit(0);
+        }
 
-          final ListenableFuture<List<Message>> messages = client.fetchUids(folder, 1, -1);
+        public void idled() {
+          System.out.println("[" + email + "]: idled");
+
+        }
+
+        public void unidled() {
+          System.out.println("[" + email + "]: unidled");
+        }
+      },
+      new NettyImapClient.ClientReadyListener() {
+        @Override
+        public void onClientReady(final NettyImapClient client) {
+          List<String> capabilities = client.capabilities();
+          System.out.println("CAPS: " + capabilities);
+
+//          client.disconnectAsync();
+
+          ListenableFuture<Folder> future = client.open("INBOX", true);
 
           try {
-            for (Message message : messages.get()) {
-              System.out.println("imapUid=" + message.getImapUid() +
-                "; subject" + message.getHeaders().get("Subject"));
-            }
+            final Folder folder;
+            folder = future.get();
+            future.addListener(new Runnable() {
+              @Override
+              public void run() {
 
-            client.disconnect();
+                final ListenableFuture<List<Message>> messages = client.fetchUids(folder, 1, -1);
+
+                try {
+                  for (Message message : messages.get()) {
+                    System.out.println("imapUid=" + message.getImapUid() +
+                      "; subject" + message.getHeaders().get("Subject"));
+                  }
+
+                  client.disconnectAsync();
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                } catch (ExecutionException e) {
+                  e.printStackTrace();
+                }
+              }
+            }, Executors.newSingleThreadExecutor());
           } catch (InterruptedException e) {
-            e.printStackTrace();
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
           } catch (ExecutionException e) {
-            e.printStackTrace();
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
           }
-        }
-      }, executor);
 
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+
+        }
+
+        @Override
+        public void onClientError(Throwable error) {
+          System.out.println("error=" + error.getCause());
+        }
+      }
+    );
 
   }
 

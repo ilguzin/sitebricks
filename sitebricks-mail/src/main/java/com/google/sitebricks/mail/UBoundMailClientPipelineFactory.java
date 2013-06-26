@@ -30,7 +30,7 @@ class UBoundMailClientPipelineFactory implements ChannelPipelineFactory {
     sslHandler.setEnableRenegotiation(true);
     pipeline.addLast("ssl", sslHandler);
 
-    pipeline.addLast("framer", new DelimiterBasedFrameDecoder(1024, Delimiters.lineDelimiter()));
+//    pipeline.addLast("framer", new DelimiterBasedFrameDecoder(1024, Delimiters.lineDelimiter()));
 
     pipeline.addLast("decoder", new StringDecoder());
     pipeline.addLast("encoder", new StringEncoder());

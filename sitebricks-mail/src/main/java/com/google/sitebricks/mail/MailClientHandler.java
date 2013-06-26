@@ -174,41 +174,17 @@ class MailClientHandler extends SimpleChannelHandler {
       if (capabilitiesSuccess.getCount() > 0) {
         if (message.startsWith(CAPABILITY_PREFIX)) {
           this.capabilities = Arrays.asList( message.substring(CAPABILITY_PREFIX.length() + 1).split("[ ]+"));
-          return;
         }
         else if (CAPABILITY_SUCCESS_REGEX.matcher(message).matches()) {
           log.info("Capability success for user {}", config.getUsername());
           capabilitiesSuccess.countDown();
         }
-        else {
-          Matcher matcher = COMMAND_FAILED_REGEX.matcher(message);
-          if (matcher.find()) {
-            // WARNING: DO NOT COUNTDOWN THE CAPABILITY LATCH ON FAILURE!!!
-
-            log.warn("Capability request failed for {} due to: {}", config.getUsername(), message);
-            errorStack.push(new Error(null, extractError(matcher),
-              wireTrace.list()));
-            disconnectAbnormally(message);
-          }
-        }
-        return;
       }
       else if (loginSuccess.getCount() > 0) {
         if (GMAIL_AUTH_SUCCESS_REGEX.matcher(message).matches() || IMAP_AUTH_SUCCESS_REGEX.matcher(message).matches()) {
           log.info("Authentication success for user {}", config.getUsername());
           loginSuccess.countDown();
-        } else {
-          Matcher matcher = COMMAND_FAILED_REGEX.matcher(message);
-          if (matcher.find()) {
-            // WARNING: DO NOT COUNTDOWN THE LOGIN LATCH ON FAILURE!!!
-
-            log.warn("Authentication failed for {} due to: {}", config.getUsername(), message);
-            errorStack.push(new Error(null /* logins have no completion */, extractError(matcher),
-                wireTrace.list()));
-            disconnectAbnormally(message);
-          }
         }
-        return;
       }
 
       // Copy to local var as the value can change underneath us.
@@ -344,7 +320,7 @@ class MailClientHandler extends SimpleChannelHandler {
 
   boolean awaitLogin() {
     try {
-      if (!loginSuccess.await(10L, TimeUnit.SECONDS)) {
+      if (!loginSuccess.await(20L, TimeUnit.SECONDS)) {
         String error = " Timed out waiting for login or incorrect credentials response";
         disconnectAbnormally(error);
         throw new RuntimeException(error);
@@ -359,7 +335,7 @@ class MailClientHandler extends SimpleChannelHandler {
 
   boolean awaitCapabilities() {
     try {
-      if (!capabilitiesSuccess.await(10L, TimeUnit.SECONDS)) {
+      if (!capabilitiesSuccess.await(20L, TimeUnit.SECONDS)) {
         String error = " Timed out waiting for capabilities response";
         disconnectAbnormally(error);
         throw new RuntimeException(error);

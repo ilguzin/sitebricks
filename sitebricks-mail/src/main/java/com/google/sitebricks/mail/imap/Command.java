@@ -10,6 +10,9 @@ import java.util.regex.Pattern;
  * @author dhanji@gmail.com (Dhanji R. Prasanna)
  */
 public enum Command {
+  GET_CAPABILITY("capability"),
+  DO_LOGIN("login"),
+  DO_AUTHENTICATE("authenticate"),
   LIST_FOLDERS("list"),
   FETCH_BODY("fetch"),
   FETCH_BODY_UID("uid fetch"),
@@ -79,6 +82,7 @@ public enum Command {
   static {
     dataExtractors = Maps.newHashMap();
 
+    dataExtractors.put(GET_CAPABILITY, new GetCapabilityExtractor());
     dataExtractors.put(LIST_FOLDERS, new ListFoldersExtractor());
     dataExtractors.put(FOLDER_STATUS, new FolderStatusExtractor());
     dataExtractors.put(FOLDER_OPEN, new OpenFolderExtractor());
@@ -98,7 +102,9 @@ public enum Command {
 
   @SuppressWarnings("unchecked") // Heterogenous collections are a pita in Java.
   public <D> D extract(List<String> message) throws ExtractionException {
-    return (D) dataExtractors.get(this).extract(message);
+    if (dataExtractors.get(this) != null)
+      return (D) dataExtractors.get(this).extract(message);
+    return null;
   }
 
   @Override
