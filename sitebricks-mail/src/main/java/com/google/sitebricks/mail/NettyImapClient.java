@@ -494,7 +494,7 @@ public class NettyImapClient implements MailClient, Idler {
         if (i < sequencesSize - 1)
             argsBuilder.append(',');
     }
-    argsBuilder.append(" (FLAGS" + extensions + ")");
+    argsBuilder.append(" (RFC822.SIZE FLAGS ENVELOPE" + extensions + ")");
     send(Command.FETCH_THIN_HEADERS_UID, argsBuilder.toString(), valueFuture);
 
     return valueFuture;

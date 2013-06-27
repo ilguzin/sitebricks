@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.Guice;
 import com.google.sitebricks.mail.imap.Folder;
 import com.google.sitebricks.mail.imap.Message;
+import com.google.sitebricks.mail.imap.MessageStatus;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -73,12 +74,12 @@ public class MailClientFactoryIntegrationTest {
               @Override
               public void run() {
 
-                final ListenableFuture<List<Message>> messages = client.fetchUids(folder, 1, -1);
+                final ListenableFuture<List<MessageStatus>> messages = client.listUidThin(folder, 68, -1);
 
                 try {
-                  for (Message message : messages.get()) {
+                  for (MessageStatus message : messages.get()) {
                     System.out.println("imapUid=" + message.getImapUid() +
-                      "; subject" + message.getHeaders().get("Subject"));
+                      "; subject='" + message.getSubject() + "'; size=" + message.getSize());
                   }
 
                   client.disconnectAsync();
