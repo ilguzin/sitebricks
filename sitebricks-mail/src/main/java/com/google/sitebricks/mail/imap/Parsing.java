@@ -6,6 +6,7 @@ import com.google.common.collect.Multimap;
 import org.apache.james.mime4j.codec.DecodeMonitor;
 import org.apache.james.mime4j.codec.DecoderUtil;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
@@ -113,6 +114,62 @@ public class Parsing {
 
   static boolean isValid(String token) {
     return null != token && !"NIL".equalsIgnoreCase(token);
+  }
+
+  /**
+   * Check whether number of opening brackets complies with number of closing brackets
+   * what is critically important for parsing array-like response sequences
+   *
+   * @param message Message to check brackets number in
+   * @return true   If closing brackets number equals or greater than opening brackets number
+   */
+  static boolean isValidOCTags(String message) {
+    return message.length() - message.replaceAll("\\(", "").length() <=
+      message.length() - message.replaceAll("\\)", "").length();
+  }
+
+  /**
+   * Do the same as {@link #isValidOCTags} but with array of strings
+   */
+  static boolean isValidOCTags(Queue<String> elements) {
+    String elementsStr = "";
+    for (String s : elements) elementsStr += s;
+    return isValidOCTags(elementsStr);
+  }
+
+  static List<Object> parseTokensIntoArray(Queue<String> elements) throws IllegalArgumentException {
+    return parseTokensIntoArray(elements, null);
+  }
+
+  /**
+   * This will parse elements in array one by one into new multi-array
+   * converting tagged sequences (those containing inside {@param openingElement} and {@param closingElement})
+   * into new arrays. Supports unlimited number of nesting elements.
+   *
+   * @param elements  Elements to parse
+   * @param appendTo  Resulting array (will create new one if null passed)
+   * @return          Result of parsing (multi-array)
+   * @throws IllegalArgumentException
+   */
+  static List<Object> parseTokensIntoArray(Queue<String> elements, List<Object> appendTo)
+    throws IllegalArgumentException {
+
+    if (appendTo == null)
+      appendTo = new ArrayList<Object>();
+
+    while (elements.peek() != null) {
+      String token = elements.poll();
+      if (token.equals("(")) {
+        List<Object> newElements = new ArrayList<Object>();
+        appendTo.add(parseTokensIntoArray(elements, newElements));
+      }
+      else if (token.equals(")")) {
+        return appendTo;
+      }
+      else
+        appendTo.add(token);
+    }
+    return appendTo;
   }
 
   static String normalizeDateToken(String token) {

@@ -254,6 +254,8 @@ public interface MailClient {
    */
   ListenableFuture<List<Message>> fetchUids(Folder folder, int startUid, int endUid);
 
+  ListenableFuture<List<Message>> fetchUids(Folder folder, List<Sequence> sequences);
+
   ListenableFuture<Set<String>> setGmailLabels(Folder folder, int imapUid,
                                                Set<String> labels);
 

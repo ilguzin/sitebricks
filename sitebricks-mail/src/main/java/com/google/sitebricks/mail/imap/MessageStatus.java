@@ -14,6 +14,7 @@ public class MessageStatus {
   private Date receivedDate;
   private String subject;
   private String inReplyTo;
+  private int attachmentsNum;
 
   private List<String> from;
   private List<String> sender;
@@ -29,6 +30,8 @@ public class MessageStatus {
   private Long threadId;
   private Set<String> labels;
   private Long gmailMsgId;
+
+  private List<Object> bodyStructure;
 
 
   public int getImapUid() {
@@ -111,6 +114,14 @@ public class MessageStatus {
     return subject;
   }
 
+  public int getAttachmentsNum() {
+    return attachmentsNum;
+  }
+
+  public void setAttachmentsNum(int attachmentsNum) {
+    this.attachmentsNum = attachmentsNum;
+  }
+
   public EnumSet<Flag> getFlags() {
     return flags;
   }
@@ -165,6 +176,14 @@ public class MessageStatus {
 
   public Long getGmailMsgId() {
     return gmailMsgId;
+  }
+
+  public void setBodyStructure(List<Object> bodyStructure) {
+    this.bodyStructure = bodyStructure;
+  }
+
+  public List<Object> getBodyStructure() {
+    return bodyStructure;
   }
 
   private static final SimpleDateFormat ISO_C_DATE_SYDNEY =

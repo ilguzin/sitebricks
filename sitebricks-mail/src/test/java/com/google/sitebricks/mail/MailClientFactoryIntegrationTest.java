@@ -1,7 +1,6 @@
 package com.google.sitebricks.mail;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.inject.Guice;
 import com.google.sitebricks.mail.imap.Folder;
 import com.google.sitebricks.mail.imap.Message;
 import com.google.sitebricks.mail.imap.MessageStatus;
@@ -74,12 +73,32 @@ public class MailClientFactoryIntegrationTest {
               @Override
               public void run() {
 
-                final ListenableFuture<List<MessageStatus>> messages = client.listUidThin(folder, 68, -1);
+                final ListenableFuture<List<Message>> messages = client.fetchUids(folder, 68, -1);
 
                 try {
-                  for (MessageStatus message : messages.get()) {
+                  for (Message message : messages.get()) {
+                    String body = "";
+                    for (Message.BodyPart bp : message.getBodyParts()) {
+                      String ct = bp.getHeaders().get("Content-Type").toString();
+                      if (ct.contains("plain")) {
+                        body = bp.getBody();
+                      }
+                      else if (ct.contains("alternative")) {
+                        for (Message.BodyPart innerBp : bp.getBodyParts()) {
+                          ct = innerBp.getHeaders().get("Content-Type").toString();
+                          if (ct.contains("plain")) {
+                            body = innerBp.getBody();
+                          }
+                        }
+                      }
+                    }
                     System.out.println("imapUid=" + message.getImapUid() +
-                      "; subject='" + message.getSubject() + "'; size=" + message.getSize());
+                      "; subject='" + message.getHeaders().get("Subject") + "; body=" + body);
+//                    System.out.println("size=" + message.getSize() +
+//                      "; imapUid=" + message.getImapUid() +
+//                      "; subject='" + message.getSubject() + "'" +
+//                      "; attachmentsNum=" + message.getAttachmentsNum() +
+//                      "; bodystructure=" + ((List) message.getBodyStructure().get(0)).get(0));
                   }
 
                   client.disconnectAsync();

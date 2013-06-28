@@ -174,9 +174,12 @@ class MessageStatusExtractor implements Extractor<List<MessageStatus>> {
       Parsing.match(tokens, int.class);
       Parsing.eat(tokens, "FETCH", "(");
 
+      status.setAttachmentsNum(parseAttachmentsCount(message));
+
       while (!tokens.isEmpty()) {
         boolean match = parseUid(tokens, status);
         match |= parseEnvelope(tokens, status);
+        match |= parseBodystructure(tokens, status);
         match |= parseFlags(tokens, status);
         match |= parseInternalDate(tokens, status);
         match |= parseRfc822Size(tokens, status);
@@ -320,4 +323,22 @@ class MessageStatusExtractor implements Extractor<List<MessageStatus>> {
     Parsing.eat(tokens, ")");
     return true;
   }
+
+  public static int parseAttachmentsCount(String message) {
+    return (message.length() - message.replace("ATTACHMENT", "").length()) / "ATTACHMENT".length();
+  }
+
+  public static boolean parseBodystructure(Queue<String> tokens, MessageStatus status) {
+    if (Parsing.matchAnyOf(tokens, "BODYSTRUCTURE") == null)
+      return false;
+
+    if (!Parsing.isValidOCTags(tokens))
+      throw new IllegalArgumentException("Invalid number of opening/closing tags");
+
+    status.setBodyStructure(Parsing.parseTokensIntoArray(tokens));
+
+    return true;
+
+  }
+
 }

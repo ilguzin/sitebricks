@@ -494,7 +494,7 @@ public class NettyImapClient implements MailClient, Idler {
         if (i < sequencesSize - 1)
             argsBuilder.append(',');
     }
-    argsBuilder.append(" (RFC822.SIZE FLAGS ENVELOPE" + extensions + ")");
+    argsBuilder.append(" (RFC822.SIZE FLAGS ENVELOPE BODYSTRUCTURE" + extensions + ")");
     send(Command.FETCH_THIN_HEADERS_UID, argsBuilder.toString(), valueFuture);
 
     return valueFuture;
@@ -686,18 +686,32 @@ public class NettyImapClient implements MailClient, Idler {
 
   @Override
   public ListenableFuture<List<Message>> fetchUids(Folder folder, int start, int end) {
+    checkRange(start, end);
+    Preconditions.checkArgument(start > 0, "Start must be greater than zero (IMAP uses 1-based " +
+      "indexing)");
+    return fetchUids(folder, ImmutableList.of(new Sequence(start, end)));
+  }
+
+  public ListenableFuture<List<Message>> fetchUids(Folder folder, List<Sequence> sequences) {
     Preconditions.checkState(mailClientHandler.isLoggedIn(),
             "Can't execute command because client is not logged in");
     Preconditions.checkState(!mailClientHandler.idleRequested.get(),
             "Can't execute command while idling (are you watching a folder?)");
 
     checkCurrentFolder(folder);
-    checkRange(start, end);
-    Preconditions.checkArgument(start > 0, "Start must be greater than zero (IMAP uses 1-based " +
-            "indexing)");
     SettableFuture<List<Message>> valueFuture = SettableFuture.create();
 
-    String args = start + ":" + toUpperBound(end) + " (uid body[])";
+    StringBuilder uidsSequenceBuilder = new StringBuilder();
+    for (int i = 0, sequencesSize = sequences.size(); i < sequencesSize; i++) {
+      Sequence seq = sequences.get(i);
+      uidsSequenceBuilder.append(toUpperBound(seq.start));
+      if (seq.end != 0)
+        uidsSequenceBuilder.append(':').append(toUpperBound(seq.end));
+      if (i < sequencesSize - 1)
+        uidsSequenceBuilder.append(',');
+    }
+
+    String args = uidsSequenceBuilder.toString() + " (uid body[])";
     send(Command.FETCH_BODY_UIDS, args, valueFuture);
 
     return valueFuture;
