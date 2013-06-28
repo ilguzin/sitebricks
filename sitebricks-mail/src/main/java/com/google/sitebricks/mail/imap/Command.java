@@ -33,9 +33,9 @@ public enum Command {
       Pattern.CASE_INSENSITIVE);
   public static final Pattern OK_SUCCESS_FIRST = Pattern.compile("\\.\\s+ok.*",
       Pattern.CASE_INSENSITIVE);
-  private static final Pattern NO_FAILURE = Pattern.compile("\\d+ no .*",
+  private static final Pattern NO_FAILURE = Pattern.compile("\\d+\\s+no.*",
       Pattern.CASE_INSENSITIVE);
-  private static final Pattern BAD_FAILURE = Pattern.compile("\\d+ bad .*",
+  private static final Pattern BAD_FAILURE = Pattern.compile("\\d+\\s+bad.*",
       Pattern.CASE_INSENSITIVE);
 
   private final String commandString;
@@ -43,8 +43,6 @@ public enum Command {
     this.commandString = commandString;
   }
 
-  private static final Pattern IMAP_COMMAND_SUCCESS = Pattern.compile("\\d+ ok success",
-      Pattern.CASE_INSENSITIVE);
   private static final Map<Command, Extractor<?>> dataExtractors;
 
   /**
@@ -70,7 +68,7 @@ public enum Command {
   }
 
   public static boolean isEndOfSequence(String message) throws ExtractionException {
-    if (IMAP_COMMAND_SUCCESS.matcher(message).matches())
+    if (OK_SUCCESS.matcher(message).matches() || OK_SUCCESS_FIRST.matcher(message).matches())
       return true;
 
     if (NO_FAILURE.matcher(message).matches() || (BAD_FAILURE.matcher(message).matches())) {
