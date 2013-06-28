@@ -121,7 +121,7 @@ public class MessageStatusExtractorTest {
 
     assertEquals("<20010927011966.SM02008@CDC0044>", status.getMessageUid());
     assertEquals(60961, status.getImapUid());
-    assertEquals("\"Ttkii E-Concierge\" Concierge@quickcolamakerXL.com", status.getFrom().get(0));
+    assertEquals("\"Ttkii E-Concierge\" <Concierge@quickcolamakerXL.com>", status.getFrom().get(0));
     assertEquals(ImmutableList.of("BATTY.SCORTI@gmail.com"), status.getTo());
     assertNull(status.getCc());
     assertNull(status.getBcc());
@@ -135,8 +135,8 @@ public class MessageStatusExtractorTest {
 
     assertEquals("<154989.22248.kl@web40805.mail.dum.wahoo.com>", status.getMessageUid());
     assertEquals(60962, status.getImapUid());
-    assertEquals("\"copiusmcfriendly co\" copiusmcfriendlyco@yahoo.com", status.getFrom().get(0));
-    assertEquals(ImmutableList.of("\"BATTY SCORTI\" BATTY.SCORTI@gmail.com"), status.getTo());
+    assertEquals("\"copiusmcfriendly co\" <copiusmcfriendlyco@yahoo.com>", status.getFrom().get(0));
+    assertEquals(ImmutableList.of("\"BATTY SCORTI\" <BATTY.SCORTI@gmail.com>"), status.getTo());
     assertNull(status.getCc());
     assertNull(status.getBcc());
     assertEquals(ImmutableSet.of(Flag.SEEN), status.getFlags());
@@ -166,8 +166,8 @@ public class MessageStatusExtractorTest {
 
     assertEquals("<E1123Yq-756Z-Fs@c.consumer.fluent.io>", status.getMessageUid());
     assertEquals(5474, status.getImapUid());
-    assertEquals("\"ASIX - Australian Social Innovation eXchange\" contact@asix.org.au", status.getFrom().get(0));
-    assertEquals(ImmutableList.of("\"dhanji\" mick@rethrick.com"), status.getTo());
+    assertEquals("\"ASIX - Australian Social Innovation eXchange\" <contact@asix.org.au>", status.getFrom().get(0));
+    assertEquals(ImmutableList.of("\"dhanji\" <mick@rethrick.com>"), status.getTo());
     assertNull(status.getCc());
     assertNull(status.getBcc());
     assertEquals(ImmutableSet.of(Flag.SEEN), status.getFlags());
@@ -180,8 +180,8 @@ public class MessageStatusExtractorTest {
 
     assertEquals("<68432.19238.12837.JavaMail.test@web.fluent.io>", status.getMessageUid());
     assertEquals(5475, status.getImapUid());
-    assertEquals("\"Mic Nic\" thing@fluect.com", status.getFrom().get(0));
-    assertEquals(ImmutableList.of("\"DJ H\" dhanji@gmail.com"), status.getTo());
+    assertEquals("\"Mic Nic\" <thing@fluect.com>", status.getFrom().get(0));
+    assertEquals(ImmutableList.of("\"DJ H\" <dhanji@gmail.com>"), status.getTo());
     assertNull(status.getCc());
     assertNull(status.getBcc());
     assertEquals(ImmutableSet.of(Flag.SEEN), status.getFlags());
@@ -276,8 +276,8 @@ public class MessageStatusExtractorTest {
     assertNotNull(extract);
     assertEquals(1, extract.size());
     MessageStatus status = extract.get(0);
-    assertEquals(ImmutableList.of("\"\nabcdef,\nabcdef - AGNRM\" foo@bar.gov.au",
-        "\"\nabcde, abcdefgh\n(actedu)\" foo@bar.edu.au", "foo@bar.edu.au"), status.getCc());
+    assertEquals(ImmutableList.of("\"\nabcdef,\nabcdef - AGNRM\" <foo@bar.gov.au>",
+        "\"\nabcde, abcdefgh\n(actedu)\" <foo@bar.edu.au>", "foo@bar.edu.au"), status.getCc());
   }
 
   @Test
@@ -294,7 +294,7 @@ public class MessageStatusExtractorTest {
     assertEquals(1, extract.size());
     MessageStatus status = extract.get(0);
     assertEquals(ImmutableSet.of("\"\\\\Inbox\""), status.getLabels());
-    assertEquals(ImmutableList.of("\"\nOther\nDude\" otherdude@yahoo.com"), status.getFrom());
+    assertEquals(ImmutableList.of("\"\nOther\nDude\" <otherdude@yahoo.com>"), status.getFrom());
     assertEquals(ImmutableSet.of("\"\\\\Inbox\""), status.getLabels());
     assertEquals(13256345038L, (long) status.getGmailMsgId());
     assertEquals(132443254747L, (long) status.getThreadId());

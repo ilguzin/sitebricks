@@ -21,15 +21,15 @@ public class ParsingTest {
   public final void addressParsing() {
     assertEquals(
         Parsing.readAddress(Parsing.tokenize("(\"Dhanji Prasanna\" NIL \"dhanji\" \"gmail.com\")")),
-        "\"Dhanji Prasanna\" dhanji@gmail.com");
+        "\"Dhanji Prasanna\" <dhanji@gmail.com>");
 
     assertEquals(
         Parsing.readAddress(Parsing.tokenize("(Dhanji\\ Prasanna NIL \"dhanji\" \"gmail.com\")")),
-        "\"Dhanji Prasanna\" dhanji@gmail.com");
+        "\"Dhanji Prasanna\" <dhanji@gmail.com>");
 
     assertEquals(
         Parsing.readAddress(Parsing.tokenize(
             "(\"<newsletter=pukaraestate.com.au@mail85.us1.rsgsv.net>\" NIL \"\\\"Pukara Estate\\\"\" NIL)")),
-        "\"<newsletter=pukaraestate.com.au@mail85.us1.rsgsv.net>\" \"Pukara Estate\"@null");
+        "\"<newsletter=pukaraestate.com.au@mail85.us1.rsgsv.net>\" <\"Pukara Estate\"@null>");
   }
 }

@@ -5,6 +5,8 @@ import com.google.sitebricks.mail.imap.Folder;
 import com.google.sitebricks.mail.imap.Message;
 import com.google.sitebricks.mail.imap.MessageStatus;
 
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -73,27 +75,23 @@ public class MailClientFactoryIntegrationTest {
               @Override
               public void run() {
 
-                final ListenableFuture<List<Message>> messages = client.fetchUids(folder, 68, -1);
+                final ListenableFuture<List<MessageStatus>> messages = client.listUidThin(folder, 68, -1);
 
                 try {
-                  for (Message message : messages.get()) {
-                    String body = "";
-                    for (Message.BodyPart bp : message.getBodyParts()) {
-                      String ct = bp.getHeaders().get("Content-Type").toString();
-                      if (ct.contains("plain")) {
-                        body = bp.getBody();
-                      }
-                      else if (ct.contains("alternative")) {
-                        for (Message.BodyPart innerBp : bp.getBodyParts()) {
-                          ct = innerBp.getHeaders().get("Content-Type").toString();
-                          if (ct.contains("plain")) {
-                            body = innerBp.getBody();
-                          }
-                        }
-                      }
+                  for (MessageStatus message : messages.get()) {
+                    String sender = "";
+                    String senderFrom = message.getSender().get(0);
+                    try {
+                      InternetAddress internetAddress = new InternetAddress(senderFrom);
+                      if (internetAddress.getPersonal() != null)
+                        sender = internetAddress.getPersonal();
+                      else if (internetAddress.getAddress() != null)
+                        sender = internetAddress.getAddress();
+                    } catch (AddressException e) {
+                      System.out.println("Error parsing sender address. SenderFrom=" + senderFrom);
                     }
                     System.out.println("imapUid=" + message.getImapUid() +
-                      "; subject='" + message.getHeaders().get("Subject") + "; body=" + body);
+                      "; subject='" + message.getSubject() + "; senderFrom=" + senderFrom+ "; sender=" + sender);
 //                    System.out.println("size=" + message.getSize() +
 //                      "; imapUid=" + message.getImapUid() +
 //                      "; subject='" + message.getSubject() + "'" +
