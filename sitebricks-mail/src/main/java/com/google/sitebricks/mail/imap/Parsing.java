@@ -48,10 +48,10 @@ public class Parsing {
     eat(tokens, ")");
 
     if (namePiece != null)
-      address.append('"').append(decode(namePiece)).append("\" ");
+      address.append('"').append(decode(namePiece)).append("\" <");
 
     // I duno what source route is for ...
-    return address.append(mailboxName).append('@').append(hostname).toString();
+    return address.append(mailboxName).append('@').append(hostname).toString() + (namePiece != null ? ">" : "");
   }
 
   @SuppressWarnings("unchecked")
