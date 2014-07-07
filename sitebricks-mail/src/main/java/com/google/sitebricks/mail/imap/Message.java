@@ -20,6 +20,7 @@ public class Message implements HasBodyParts {
 
   private MessageStatus status;
   private int imapUid;
+  private String raw;
 
   // A header can have multiple, different values.
   private Multimap<String, String> headers = newListMultimap();
@@ -31,6 +32,14 @@ public class Message implements HasBodyParts {
 
   public int getImapUid() {
     return imapUid;
+  }
+
+  public void setRaw(String raw) {
+    this.raw = raw;
+  }
+
+  public String getRaw() {
+    return raw;
   }
 
   public void setHeaders(Multimap<String, String> headers) {

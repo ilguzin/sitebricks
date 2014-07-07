@@ -307,7 +307,16 @@ class MessageStatusExtractor implements Extractor<List<MessageStatus>> {
       Parsing.eat(tokens, "NIL");
     }
 
-    status.setSubject(Parsing.decode(Parsing.match(tokens, String.class)));
+//    status.setSubject(Parsing.decode(Parsing.match(tokens, String.class)));
+    String notDecodedSubject = Parsing.match(tokens, String.class);
+    if (notDecodedSubject != null) {
+      String decodedSubject = Parsing.decodeWithMimeUtility(notDecodedSubject);
+      status.setSubject(decodedSubject);
+      if (decodedSubject != null && decodedSubject.contains("????")) {
+        log.error("Looks like subject decode error! notDecodedSubject='{}', decodedSubject='{}'",
+          notDecodedSubject, decodedSubject);
+      }
+    }
 
     status.setFrom(Parsing.readAddresses(tokens));
     status.setSender(Parsing.readAddresses(tokens));

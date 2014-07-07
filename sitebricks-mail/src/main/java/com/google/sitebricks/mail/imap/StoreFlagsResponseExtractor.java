@@ -1,5 +1,8 @@
 package com.google.sitebricks.mail.imap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -11,6 +14,8 @@ import java.util.regex.Pattern;
  * @author jochen@pedesis.org (Jochen Bekmann)
  */
 public class StoreFlagsResponseExtractor implements Extractor<Set<Flag>> {
+  private static final Logger log = LoggerFactory.getLogger(StoreFlagsResponseExtractor.class);
+
   private static final Pattern FETCH_FLAG_PATT = Pattern.compile(".* FETCH *\\((FLAGS *\\(.*\\)).*\\)");
   private static final Pattern BAD_PATT = Pattern.compile("\\d+ +BAD (.*)");
   private static final Pattern NO_PATT = Pattern.compile("\\d+ +NO (.*)");
@@ -19,7 +24,7 @@ public class StoreFlagsResponseExtractor implements Extractor<Set<Flag>> {
   /**
    * Parse the response, which includes new flag settings and command status.
    * We expect only one FETCH response as we only set flags on one msg.
-   * 
+   *
    * http://tools.ietf.org/html/rfc3501#section-6.4.6
    *   C: A003 STORE_FLAGS 6 +FLAGS (\Deleted)
    *   S: * 4 FETCH (FLAGS (\Deleted \Flagged \Seen) UID 6)
@@ -27,6 +32,8 @@ public class StoreFlagsResponseExtractor implements Extractor<Set<Flag>> {
    */
   @Override
   public Set<Flag> extract(List<String> messages) throws ExtractionException {
+    log.debug("extract(messages=" + messages + ")");
+
     boolean gotFetch = false;
     Set<Flag> result = null;
 

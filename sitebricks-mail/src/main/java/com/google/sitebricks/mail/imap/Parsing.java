@@ -6,6 +6,8 @@ import com.google.common.collect.Multimap;
 import org.apache.james.mime4j.codec.DecodeMonitor;
 import org.apache.james.mime4j.codec.DecoderUtil;
 
+import javax.mail.internet.MimeUtility;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -274,7 +276,21 @@ public class Parsing {
         ? null
         : str.isEmpty()
             ? str
-            : DecoderUtil.decodeEncodedWords(str, DecodeMonitor.SILENT);
+            : DecoderUtil.decodeEncodedWords(str, DecodeMonitor.STRICT);
+  }
+
+  public static String decodeWithMimeUtility(String str) {
+    // decode as per http://www.ietf.org/rfc/rfc2047.txt
+    try {
+      return str == null
+          ? null
+          : str.isEmpty()
+              ? str
+              : MimeUtility.decodeText(str);
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    return null;
   }
 
   public static Collection<String> getKeyVariations(Multimap<String, String> headers, String... keys) {

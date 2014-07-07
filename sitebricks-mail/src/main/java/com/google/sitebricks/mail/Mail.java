@@ -1,6 +1,5 @@
 package com.google.sitebricks.mail;
 
-import com.google.inject.ImplementedBy;
 import com.google.sitebricks.mail.oauth.OAuth2Config;
 import com.google.sitebricks.mail.oauth.OAuthConfig;
 
@@ -10,7 +9,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author dhanji@gmail.com (Dhanji R. Prasanna)
  */
-@ImplementedBy(SitebricksMail.class)
 public interface Mail {
   AuthBuilder clientOf(String host, int port);
 

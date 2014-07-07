@@ -2,6 +2,8 @@ package com.google.sitebricks.mail;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.sitebricks.mail.imap.*;
@@ -153,8 +155,8 @@ public class NettyImapClient implements MailClient, Idler {
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
           mailClientHandler.idleAcknowledged.set(false);
-          mailClientHandler.disconnected();
-          listener.disconnected();
+          if (!mailClientHandler.isDisconnected())
+            listener.connectionLost();
         }
       });
     }
@@ -177,8 +179,8 @@ public class NettyImapClient implements MailClient, Idler {
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
           mailClientHandler.idleAcknowledged.set(false);
-          mailClientHandler.disconnected();
-          listener.disconnected();
+          if (!mailClientHandler.isDisconnected())
+            listener.connectionLost();
         }
       });
     }
@@ -332,14 +334,13 @@ public class NettyImapClient implements MailClient, Idler {
       // The Netty channel close listener will fire a disconnect event to our client,
       // automatically. See connect() for details.
       try {
+        mailClientHandler.disconnected();
         channel.close().awaitUninterruptibly(config.getTimeout(), TimeUnit.MILLISECONDS);
       } catch (Exception e) {
         // swallow any exceptions.
       } finally {
         mailClientHandler.idleAcknowledged.set(false);
-        mailClientHandler.disconnected();
-        if (disconnectListener != null)
-          disconnectListener.disconnected();
+        disconnectListener.disconnected();
       }
     }
   }
@@ -455,7 +456,7 @@ public class NettyImapClient implements MailClient, Idler {
     checkCurrentFolder(folder);
     checkRange(start, end);
     Preconditions.checkArgument(start > 0, "Start must be greater than zero (IMAP uses 1-based " +
-        "indexing)");
+      "indexing)");
     SettableFuture<List<MessageStatus>> valueFuture = SettableFuture.create();
 
     // -ve end range means get everything (*).
@@ -589,6 +590,20 @@ public class NettyImapClient implements MailClient, Idler {
   }
 
   @Override
+  public ListenableFuture<Set<Flag>> addOrRemoveCustomFlags(Folder folder, int imapUid, Set<String> flags,
+                                                            boolean add) {
+    Preconditions.checkState(mailClientHandler.isLoggedIn(),
+      "Can't execute command because client is not logged in");
+    Preconditions.checkState(!mailClientHandler.idleRequested.get(),
+      "Can't execute command while idling (are you watching a folder?)");
+    checkCurrentFolder(folder);
+    SettableFuture<Set<Flag>> valueFuture = SettableFuture.create();
+    String args = imapUid + " " + (add ? "+" : "-") + Flag.toImapCustom(flags);
+    send(Command.STORE_FLAGS, args, valueFuture);
+    return valueFuture;
+  }
+
+  @Override
   public ListenableFuture<Boolean> copy(Folder folder, int imapUid, String toFolder) {
     Preconditions.checkState(mailClientHandler.isLoggedIn(),
         "Can't execute command because client is not logged in");
@@ -694,9 +709,9 @@ public class NettyImapClient implements MailClient, Idler {
 
   public ListenableFuture<List<Message>> fetchUids(Folder folder, List<Sequence> sequences) {
     Preconditions.checkState(mailClientHandler.isLoggedIn(),
-            "Can't execute command because client is not logged in");
+      "Can't execute command because client is not logged in");
     Preconditions.checkState(!mailClientHandler.idleRequested.get(),
-            "Can't execute command while idling (are you watching a folder?)");
+      "Can't execute command while idling (are you watching a folder?)");
 
     checkCurrentFolder(folder);
     SettableFuture<List<Message>> valueFuture = SettableFuture.create();
@@ -730,11 +745,28 @@ public class NettyImapClient implements MailClient, Idler {
   }
 
   @Override
+  public ListenableFuture<String> keepalive() {
+//    Preconditions.checkState(mailClientHandler.idleRequested.get(),
+//      "The command NOOP can only be executed while idling (are you watching a folder?)");
+
+    SettableFuture<String> valueFuture = SettableFuture.create();
+
+    send(Command.NOOP, "", valueFuture);
+
+    return valueFuture;
+  }
+
+  @Override
   public synchronized boolean unwatch() {
+    done();
+    return true;
+  }
+
+  public synchronized boolean unwatch(FutureCallback<String> callback) {
     if (!mailClientHandler.idleRequested.get())
       return false;
 
-    done();
+    Futures.addCallback(doneFuture(), callback);
     return true;
   }
 
@@ -754,9 +786,24 @@ public class NettyImapClient implements MailClient, Idler {
     config.getOAuthConfig().accessToken = accessToken;
   }
 
-  public synchronized void done() {
+  public ChannelFuture done() {
     log.trace("Dropping out of IDLE...");
-    channel.write("done\r\n");
+    return channel.write("done\r\n");
+  }
+
+  public ListenableFuture<String> doneFuture() {
+    log.trace("Dropping out of IDLE...");
+
+
+    SettableFuture<String> valueFuture = SettableFuture.create();
+
+    String commandString = Command.UNIDLE.toString() + "\r\n";
+
+    mailClientHandler.enqueue(new CommandCompletion(Command.UNIDLE, sequence.get(), valueFuture, commandString));
+
+    channel.write(commandString);
+
+    return valueFuture;
   }
 
   @Override

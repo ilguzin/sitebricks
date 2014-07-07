@@ -79,6 +79,18 @@ public enum Flag {
     return imap.toString();
   }
 
+  public static String toImapCustom(Set<String> flags) {
+    StringBuilder imap = new StringBuilder("FLAGS (");
+    Iterator<String> it = flags.iterator();
+    while (it.hasNext()) {
+      imap.append(it.next());
+      if (it.hasNext())
+        imap.append(" ");
+    }
+    imap.append(")");
+    return imap.toString();
+  }
+
   /**
    * @return set of flags, null on failure.
    */

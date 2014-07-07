@@ -1,6 +1,7 @@
 package com.google.sitebricks.mail;
 
 import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.sitebricks.mail.imap.*;
 
@@ -156,6 +157,17 @@ public interface MailClient {
                                                boolean add);
 
   /**
+   * Adds or Removes custom user flags from a range of messages.
+   *
+   * @param add if true, flags are added, otherwise they're removed.
+   * @return the new flags on the message, null on failure.
+   * <b>NOTE: these can be different to those set due to concurrent updates by other clients.</b>
+   * <b>NOTE: you must call {@link #open(String)} first.</b>
+   */
+  ListenableFuture<Set<Flag>> addOrRemoveCustomFlags(Folder folder, int imapUid, Set<String> flags,
+                                                     boolean add);
+
+  /**
    * Adds or removes Gmail labels from a range of messages.
    *
    * @param add if true, flags are added, otherwise they're removed.
@@ -186,6 +198,8 @@ public interface MailClient {
    */
   void watch(Folder folder, FolderObserver observer);
 
+  ListenableFuture<String> keepalive();
+
   /**
    * Stops watching a folder if one was currently being watched (otherwise
    * a noop). Events from 'IDLEing' will immediately stop when this method
@@ -197,6 +211,8 @@ public interface MailClient {
    * @return whether the connection was being watched when called.
    */
   boolean unwatch();
+
+  boolean unwatch(FutureCallback<String> callback);
 
   /**
    * Returns a string containing the last error message from the server or
@@ -260,6 +276,8 @@ public interface MailClient {
                                                Set<String> labels);
 
   static interface DisconnectListener {
+    void connectionLost();
+
     void disconnected();
 
     /**

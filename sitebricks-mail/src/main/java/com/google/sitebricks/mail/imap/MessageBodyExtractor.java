@@ -281,6 +281,21 @@ class MessageBodyExtractor implements Extractor<List<Message>> {
     if (moreErrorInfo) {
       log.warn("previous error pertained to email with uid: {} headers: {}", email.getImapUid(), email.getHeaders());
     }
+
+    // Rewind!
+    while (iterator.hasPrevious()) iterator.previous();
+
+    String line = "";
+    String messageRaw = "";
+
+    while (iterator.hasNext()) {
+      line = iterator.next();
+      messageRaw += line + "\n";
+      log.debug("message line: {}", line);
+    }
+
+    email.setRaw(messageRaw);
+
     return email;
   }
 

@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.sitebricks.mail.imap.Folder;
 import com.google.sitebricks.mail.imap.Message;
 import com.google.sitebricks.mail.imap.MessageStatus;
+import com.google.sitebricks.mail.oauth.OAuth2Config;
 
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
@@ -30,8 +31,8 @@ public class MailClientFactoryIntegrationTest {
     NettyImapClientFactory nettyImapClientFactory =
       new NettyImapClientFactory(threadPullExecutor, threadPullExecutor);
 
-    final String email = "";
-    final String password = "";
+    final String email = "flyflyerson@gmail.com";
+    final String password = "ya29.AHES6ZQolsZQH8hxheR8-VnVOVqmEDgGQa6e6RNwrp1YsZC1ka-x3-04cA";
     final String host = "imap.gmail.com";
     final int port = 993;
 //    final String host = "localhost";
@@ -41,8 +42,14 @@ public class MailClientFactoryIntegrationTest {
     NettyImapClient.addUserForVerboseOutput(email, true);
 
     nettyImapClientFactory.newNettyImapClient(
-      host, port, Mail.Auth.SSL, email, password, 10000,
+      host, port, email, new OAuth2Config(password, "any_text", "any_text"), 5000,
       new MailClient.DisconnectListener() {
+        @Override
+        public void connectionLost() {
+          System.out.println("[" + email + "]: connection lost");
+          System.exit(0);
+        }
+
         @Override
         public void disconnected() {
           System.out.println("[" + email + "]: disconnected");
@@ -75,7 +82,7 @@ public class MailClientFactoryIntegrationTest {
               @Override
               public void run() {
 
-                final ListenableFuture<List<MessageStatus>> messages = client.listUidThin(folder, 68, -1);
+                final ListenableFuture<List<MessageStatus>> messages = client.listUidThin(folder, 52283, -1);
 
                 try {
                   for (MessageStatus message : messages.get()) {
@@ -90,7 +97,7 @@ public class MailClientFactoryIntegrationTest {
                     } catch (AddressException e) {
                       System.out.println("Error parsing sender address. SenderFrom=" + senderFrom);
                     }
-                    System.out.println("imapUid=" + message.getImapUid() +
+                    System.out.println("imapUid=" + message.getImapUid() + "; size=" + message.getSize() +
                       "; subject='" + message.getSubject() + "; senderFrom=" + senderFrom+ "; sender=" + sender);
 //                    System.out.println("size=" + message.getSize() +
 //                      "; imapUid=" + message.getImapUid() +

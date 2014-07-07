@@ -70,6 +70,7 @@ class MailClientHandler extends SimpleChannelHandler {
 
   // Panic button.
   private volatile boolean halt = false;
+  private volatile boolean disconnected = false;
 
   private final LinkedBlockingDeque<Error> errorStack = new LinkedBlockingDeque<Error>();
   private final Queue<CommandCompletion> completions =
@@ -378,6 +379,11 @@ class MailClientHandler extends SimpleChannelHandler {
   }
 
   public void disconnected() {
+    disconnected = true;
+  }
+
+  public boolean isDisconnected() {
+    return disconnected;
   }
 
   static class Error implements MailClient.WireError {
